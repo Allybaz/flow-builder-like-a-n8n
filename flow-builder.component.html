@@ -1,0 +1,449 @@
+<!-- IoT Flow Builder Header -->
+<div class="flex flex-col w-full h-full bg-gray-50">
+    <!-- Top Navigation Bar -->
+    <div class="flex items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm">
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2">
+                <mat-icon class="text-blue-600">account_tree</mat-icon>
+                <span class="text-lg font-semibold text-gray-800">{{'IoT Flow Builder' | transloco}}</span>
+                <span class="text-gray-500">/</span>
+                <span class="text-gray-600">{{'create-new-flow' | transloco}}</span>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button mat-raised-button color="primary" (click)="saveFlow()" class="mr-2">
+                <mat-icon>save</mat-icon>
+                {{'save-flow' | transloco}}
+            </button>
+            <button mat-raised-button (click)="exportFlow()">
+                <mat-icon>file_download</mat-icon>
+                {{'export' | transloco}}
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Left Sidebar - Node Library -->
+        <div class="w-64 bg-white border-r border-gray-200 overflow-y-auto">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-sm font-medium text-gray-900 mb-4">Navigation</h3>
+                <nav class="space-y-2">
+                    <div class="flex items-center px-3 py-2 text-sm text-blue-600 bg-blue-50 rounded-md">
+                        <mat-icon class="mr-3 text-blue-600">auto_fix_high</mat-icon>
+                        {{'flow-builder' | transloco}}
+                    </div>
+                    <div class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md">
+                        <mat-icon class="mr-3 text-gray-400">save</mat-icon>
+                        Saved Flows
+                    </div>
+                    <div class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md">
+                        <mat-icon class="mr-3 text-gray-400">devices</mat-icon>
+                        Device Manager
+                    </div>
+                    <div class="flex items-center px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-md">
+                        <mat-icon class="mr-3 text-gray-400">settings</mat-icon>
+                        Settings
+                    </div>
+                </nav>
+            </div>
+
+            <div class="p-4">
+                <h3 class="text-sm font-medium text-gray-900 mb-4">{{'node-library' | transloco}}</h3>
+
+                <div class="mb-4">
+                    <h4 class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{{'triggers' | transloco | uppercase}}</h4>
+                    <div class="space-y-2">
+                        <div *ngFor="let trigger of nodeLibrary.triggers"
+                             class="flex items-center p-2 bg-green-50 border border-green-200 rounded-md cursor-pointer hover:bg-green-100 transition-all duration-200"
+                             draggable="true"
+                             (dragstart)="onDragStart($event, trigger)">
+                            <mat-icon class="text-green-600 mr-2">{{trigger.icon}}</mat-icon>
+                            <span class="text-sm text-gray-700">{{trigger.name}}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{{'actions' | transloco | uppercase}}</h4>
+                    <div class="space-y-2">
+                        <div *ngFor="let action of nodeLibrary.actions"
+                             class="flex items-center p-2 bg-purple-50 border border-purple-200 rounded-md cursor-pointer hover:bg-purple-100 transition-all duration-200"
+                             draggable="true"
+                             (dragstart)="onDragStart($event, action)">
+                            <mat-icon class="text-purple-600 mr-2">{{action.icon}}</mat-icon>
+                            <span class="text-sm text-gray-700">{{action.name}}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center - Flow Canvas -->
+        <div class="flex-1 flex flex-col">
+            <!-- Flow Toolbar -->
+            <div class="flex items-center justify-between p-3 bg-white border-b border-gray-200">
+                <div class="flex items-center space-x-2">
+                    <button mat-icon-button (click)="runFlow()" matTooltip="Run Flow"
+                            [class.text-green-600]="!isFlowActive" [class.text-green-800]="isFlowActive">
+                        <mat-icon>play_arrow</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="stopFlow()" matTooltip="Stop">
+                        <mat-icon class="text-red-600">stop</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="undoAction()" matTooltip="Undo">
+                        <mat-icon>undo</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="redoAction()" matTooltip="Redo">
+                        <mat-icon>redo</mat-icon>
+                    </button>
+
+                    <div class="mx-4 h-6 w-px bg-gray-300"></div>
+
+                    <button mat-icon-button *ngIf="selectedNode" (click)="deleteNode(selectedNode.id)"
+                            matTooltip="Delete Selected Node" class="text-red-600">
+                        <mat-icon>delete</mat-icon>
+                    </button>
+
+                    <div class="mx-4 h-6 w-px bg-gray-300"></div>
+
+                    <button mat-icon-button
+                            (click)="toggleSmoothMovement()"
+                            matTooltip="Toggle Smooth Movement"
+                            [class.text-blue-600]="isMouseTracking"
+                            [class.text-gray-400]="!isMouseTracking">
+                        <mat-icon>{{isMouseTracking ? 'visibility_off' : 'visibility'}}</mat-icon>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">Zoom:</span>
+                    <button mat-icon-button (click)="zoomOut()" [disabled]="zoom <= 50">
+                        <mat-icon>remove</mat-icon>
+                    </button>
+                    <span class="text-sm font-medium min-w-[50px] text-center">{{zoom}}%</span>
+                    <button mat-icon-button (click)="zoomIn()" [disabled]="zoom >= 200">
+                        <mat-icon>add</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="resetZoom()" matTooltip="Reset Zoom">
+                        <mat-icon>center_focus_strong</mat-icon>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Flow Canvas -->
+            <div #flowCanvas
+                 class="flex-1 bg-gray-100 relative overflow-auto cursor-default"
+                 style="background-image: radial-gradient(circle, #e5e7eb 1px, transparent 1px); background-size: 20px 20px;"
+                 (dragover)="onDragOver($event)"
+                 (drop)="onDrop($event)"
+                 [style.transform]="'scale(' + scale + ')'">
+
+                <!-- SVG Container for Connections -->
+                <svg #svgContainer
+                     class="absolute inset-0 w-full h-full"
+                     style="z-index: 1;">
+
+                    <!-- Existing Connections -->
+                    <g *ngFor="let connection of connections">
+                        <path [attr.d]="getConnectionPath(connection)"
+                              [attr.stroke]="hoveredConnectionId === connection.id ? '#f97316' : '#3b82f6'"
+                              stroke-width="2"
+                              fill="none"
+                              class="connection-line"
+                              [class.connection-line-updating]="dragState.isDragging"
+                              (click)="onConnectionClick(connection, $event)"
+                              (mouseenter)="onConnectionMouseEnter(connection)"
+                              (mouseleave)="onConnectionMouseLeave()"
+                              marker-end="url(#arrowhead)"/>
+
+                        <!-- Connection Hover Icons -->
+                        <g *ngIf="hoveredConnectionId === connection.id"
+                           [attr.transform]="'translate(' + getConnectionMidpoint(connection).x + ',' + getConnectionMidpoint(connection).y + ')'">
+
+                            <!-- Delete Icon -->
+                            <circle cx="-20" cy="0" r="12" fill="white" stroke="#ef4444" stroke-width="2"
+                                    class="connection-icon" (click)="deleteConnection(connection.id); $event.stopPropagation()"/>
+                            <text x="-20" y="4" text-anchor="middle" font-size="12" fill="#ef4444"
+                                  class="connection-icon-text" (click)="deleteConnection(connection.id); $event.stopPropagation()">×</text>
+
+                            <!-- Insert Node Icon -->
+                            <circle cx="20" cy="0" r="12" fill="white" stroke="#3b82f6" stroke-width="2"
+                                    class="connection-icon" (click)="onConnectionClick(connection, $event)"/>
+                            <text x="20" y="4" text-anchor="middle" font-size="12" fill="#3b82f6"
+                                  class="connection-icon-text" (click)="onConnectionClick(connection, $event)">+</text>
+                        </g>
+                    </g>
+
+                    <!-- Temporary Connection Line -->
+                    <path *ngIf="tempConnection"
+                          [attr.d]="'M ' + tempConnection.x1 + ' ' + tempConnection.y1 + ' L ' + tempConnection.x2 + ' ' + tempConnection.y2"
+                          stroke="#3b82f6"
+                          stroke-width="2"
+                          stroke-dasharray="5,5"
+                          fill="none"/>
+
+                    <!-- Arrow marker definition -->
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7"
+                                refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+                        </marker>
+                    </defs>
+                </svg>
+
+                <!-- Dynamic Flow Nodes -->
+                <div class="absolute inset-0 p-8">
+                                    <div *ngFor="let node of nodes; trackBy: trackByNodeId"
+                     class="absolute bg-white rounded-lg shadow-md border-2 p-4 w-48 flow-node group"
+                     [class.border-green-500]="node.type === 'trigger'"
+                     [class.border-purple-500]="node.type === 'action' && node.color === 'purple'"
+                     [class.border-red-500]="node.type === 'action' && node.color === 'red'"
+                     [class.border-orange-500]="node.type === 'action' && node.color === 'orange'"
+                     [class.dragging]="node.isDragging"
+                     [class.smooth-moving]="isMouseTracking && smoothMovementNodes.includes(node)"
+                     [style.left.px]="node.position.x"
+                     [style.top.px]="node.position.y"
+                     [style.z-index]="node.isDragging ? 1000 : 2"
+                     (mousedown)="onNodeMouseDown($event, node)"
+                     (mouseenter)="onNodeMouseEnter(node.id)"
+                     (mouseleave)="onNodeMouseLeave()">
+
+                        <!-- Node Header -->
+                        <div class="flex items-center mb-2">
+                            <mat-icon [class.text-green-600]="node.type === 'trigger'"
+                                      [class.text-purple-600]="node.type === 'action' && node.color === 'purple'"
+                                      [class.text-red-600]="node.type === 'action' && node.color === 'red'"
+                                      [class.text-orange-600]="node.type === 'action' && node.color === 'orange'"
+                                      class="mr-2">{{node.icon}}</mat-icon>
+                            <span class="font-medium text-gray-800 text-sm">{{node.title}}</span>
+                        </div>
+
+                        <!-- Node Content -->
+                        <div class="text-xs text-gray-600 mb-1">
+                            {{node.type === 'trigger' ? 'Condition' : 'Action'}}
+                        </div>
+                        <div class="text-sm text-gray-800 mb-2">
+                            {{node.condition || node.action}}
+                        </div>
+
+                                            <!-- Connection Points -->
+                    <div *ngIf="node.outputs" class="absolute -right-4 top-1/2 transform -translate-y-1/2">
+                        <div *ngFor="let output of node.outputs"
+                             class="connection-point w-6 h-6 bg-blue-500 rounded-full hover:bg-blue-600 hover:scale-125 transition-all duration-200"
+                             [attr.data-node-id]="node.id"
+                             [attr.data-output-id]="output.id"
+                             (mousedown)="startConnection(node.id, output.id, $event)"
+                             [class.connected]="output.connected"
+                             [class.connecting]="isConnecting && connectionStart?.nodeId === node.id && connectionStart?.outputId === output.id">
+                        </div>
+                    </div>
+
+                    <div *ngIf="node.inputs" class="absolute -left-4 top-1/2 transform -translate-y-1/2">
+                        <div *ngFor="let input of node.inputs"
+                             class="connection-point w-6 h-6 bg-green-500 rounded-full hover:bg-green-600 hover:scale-125 transition-all duration-200"
+                             [attr.data-node-id]="node.id"
+                             [attr.data-input-id]="input.id"
+                             (mouseup)="endConnection(node.id, input.id, $event)"
+                             [class.connected]="input.connected"
+                             [class.connecting]="isConnecting && connectionStart?.nodeId === node.id && connectionStart?.outputId === input.id">
+                        </div>
+                    </div>
+
+                        <!-- Delete Button (only for selected node) -->
+                        <button *ngIf="hoveredNodeId === node.id"
+                                mat-icon-button
+                                class="absolute -top-2 -right-2 w-8 h-8 bg-gray-300 bg-opacity-90 text-gray-700 hover:bg-gray-400 hover:scale-110 transition-all duration-200 shadow-md"
+                                (click)="deleteNode(node.id); $event.stopPropagation()">
+                            <mat-icon class="text-sm font-bold">close</mat-icon>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Drop Zone Indicator -->
+                <div *ngIf="false"
+                     class="absolute inset-8 border-2 border-dashed border-blue-400 bg-blue-50 bg-opacity-50 rounded-lg flex items-center justify-center">
+                    <div class="text-blue-600 text-lg font-medium">Drop nodes here to add them to the flow</div>
+                </div>
+
+
+
+                <!-- Connection Menu -->
+                <div *ngIf="showConnectionMenu"
+                     class="absolute bg-white rounded-lg shadow-lg border border-gray-200 p-4 w-64 z-50"
+                     [style.left.px]="connectionMenuPosition.x"
+                     [style.top.px]="connectionMenuPosition.y">
+
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-sm font-medium text-gray-900">Connection Options</h4>
+                        <button mat-icon-button (click)="hideConnectionMenu()" class="text-gray-400 hover:text-gray-600">
+                            <mat-icon class="text-sm">close</mat-icon>
+                        </button>
+                    </div>
+
+                    <!-- Delete Connection Button -->
+                    <div class="mb-3">
+                        <button mat-button
+                                class="w-full bg-red-50 text-red-600 border border-red-200 rounded-md hover:bg-red-100 transition-all duration-200"
+                                (click)="deleteSelectedConnection()">
+                            <mat-icon class="text-sm mr-2">delete</mat-icon>
+                            <span class="text-sm">Delete Connection</span>
+                        </button>
+                    </div>
+
+                    <!-- Insert Node Section -->
+                    <div class="mb-3">
+                        <h5 class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Insert Node</h5>
+
+                        <!-- Triggers Section -->
+                        <div class="mb-2">
+                            <h6 class="text-xs font-medium text-gray-600 mb-1">Triggers</h6>
+                            <div class="space-y-1">
+                                <div *ngFor="let trigger of nodeLibrary.triggers"
+                                     class="flex items-center p-2 bg-green-50 border border-green-200 rounded-md cursor-pointer hover:bg-green-100 transition-all duration-200"
+                                     (click)="insertNodeInConnection(trigger)">
+                                    <mat-icon class="text-green-600 mr-2 text-sm">{{trigger.icon}}</mat-icon>
+                                    <span class="text-sm text-gray-700">{{trigger.name}}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions Section -->
+                        <div class="mb-2">
+                            <h6 class="text-xs font-medium text-gray-600 mb-1">Actions</h6>
+                            <div class="space-y-1">
+                                <div *ngFor="let action of nodeLibrary.actions"
+                                     class="flex items-center p-2 bg-purple-50 border border-purple-200 rounded-md cursor-pointer hover:bg-purple-100 transition-all duration-200"
+                                     (click)="insertNodeInConnection(action)">
+                                    <mat-icon class="text-purple-600 mr-2 text-sm">{{action.icon}}</mat-icon>
+                                    <span class="text-sm text-gray-700">{{action.name}}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Node Properties -->
+        <div class="w-80 bg-white border-l border-gray-200 overflow-y-auto">
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-sm font-medium text-gray-900 mb-4">{{'node-properties' | transloco}}</h3>
+
+                <div class="space-y-4" *ngIf="selectedNode; else noSelection">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Node Name</label>
+                        <mat-form-field class="w-full" appearance="outline">
+                            <input matInput [(ngModel)]="selectedNode.title" placeholder="Enter node name">
+                        </mat-form-field>
+                    </div>
+
+                    <div *ngIf="selectedNode.type === 'trigger'">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Condition</label>
+                        <mat-form-field class="w-full" appearance="outline">
+                            <textarea matInput [(ngModel)]="selectedNode.condition" placeholder="Enter condition" rows="2"></textarea>
+                        </mat-form-field>
+                    </div>
+
+                    <div *ngIf="selectedNode.type === 'action'">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Action</label>
+                        <mat-form-field class="w-full" appearance="outline">
+                            <textarea matInput [(ngModel)]="selectedNode.action" placeholder="Enter action" rows="2"></textarea>
+                        </mat-form-field>
+                    </div>
+
+                    <!-- Threshold for Temperature Sensor -->
+                    <div *ngIf="selectedNode.title === 'Temperature Sensor'">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{'threshold' | transloco}}</label>
+                        <mat-form-field class="w-full" appearance="outline">
+                            <input matInput type="number" [(ngModel)]="threshold"
+                                   (ngModelChange)="onThresholdChange($event)" placeholder="26">
+                        </mat-form-field>
+                    </div>
+
+                    <div *ngIf="selectedNode.title === 'Temperature Sensor'">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{{'unit' | transloco}}</label>
+                        <mat-form-field class="w-full" appearance="outline">
+                            <mat-select [(ngModel)]="selectedUnit" (selectionChange)="onUnitChange($event.value)">
+                                <mat-option value="Celsius (°C)">Celsius (°C)</mat-option>
+                                <mat-option value="Fahrenheit (°F)">Fahrenheit (°F)</mat-option>
+                                <mat-option value="Kelvin (K)">Kelvin (K)</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <mat-form-field appearance="outline">
+                                <mat-label>X</mat-label>
+                                <input matInput type="number" [(ngModel)]="selectedNode.position.x">
+                            </mat-form-field>
+                            <mat-form-field appearance="outline">
+                                <mat-label>Y</mat-label>
+                                <input matInput type="number" [(ngModel)]="selectedNode.position.y">
+                            </mat-form-field>
+                        </div>
+                    </div>
+                </div>
+
+                <ng-template #noSelection>
+                    <div class="text-center text-gray-500 py-8">
+                        <mat-icon class="text-4xl mb-2">touch_app</mat-icon>
+                        <p>Select a node to edit its properties</p>
+                    </div>
+                </ng-template>
+
+                <div class="mt-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">{{'flow-status' | transloco}}</label>
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center">
+                            <div [class]="isFlowActive ? 'w-3 h-3 bg-green-500 rounded-full' : 'w-3 h-3 bg-gray-400 rounded-full'"></div>
+                            <span class="ml-2 text-sm" [class]="isFlowActive ? 'text-green-600' : 'text-gray-500'">
+                                {{flowStatus}}
+                            </span>
+                        </div>
+                        <mat-slide-toggle [(ngModel)]="isFlowActive" (change)="toggleFlowStatus()">
+                        </mat-slide-toggle>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-b border-gray-200">
+                <h3 class="text-sm font-medium text-gray-900 mb-4">{{'device-status' | transloco}}</h3>
+                <div class="space-y-3">
+                    <div *ngFor="let device of devices" class="flex items-center justify-between">
+                        <span class="text-sm text-gray-700">{{device.name}}</span>
+                        <div class="flex items-center">
+                            <div [class]="'w-2 h-2 rounded-full mr-2'"
+                                 [class.bg-green-500]="device.color === 'green'"
+                                 [class.bg-blue-500]="device.color === 'blue'"
+                                 [class.bg-orange-500]="device.color === 'orange'"></div>
+                            <span class="text-xs text-gray-500">{{device.status}}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4">
+                <h3 class="text-sm font-medium text-gray-900 mb-4">{{'recent-activity' | transloco}}</h3>
+                <div class="space-y-3 max-h-64 overflow-y-auto">
+                    <div *ngFor="let activity of recentActivity" class="flex items-start space-x-3">
+                        <div class="flex-shrink-0">
+                            <div [ngSwitch]="activity.type" class="w-2 h-2 rounded-full mt-1.5">
+                                <div *ngSwitchCase="'trigger'" class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <div *ngSwitchCase="'action'" class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <div *ngSwitchCase="'notification'" class="w-2 h-2 bg-red-500 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs text-gray-900">{{activity.message}}</p>
+                            <p class="text-xs text-gray-500">{{activity.time}}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

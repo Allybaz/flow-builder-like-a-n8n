@@ -1,0 +1,357 @@
+// Flow Builder Container
+:host {
+    display: block;
+    height: 100%;
+    width: 100%;
+}
+
+// Node Library Styles
+.node-library {
+    .node-item {
+        transition: all 0.2s ease;
+        user-select: none;
+
+        &:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        &:active {
+            transform: scale(0.98);
+        }
+    }
+}
+
+// Flow Canvas Styles
+.flow-canvas {
+    position: relative;
+
+    .flow-node {
+        // Base styles for smooth performance
+        will-change: auto;
+        backface-visibility: hidden;
+        transform-style: preserve-3d;
+
+        // Transitions only when NOT dragging
+        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        cursor: grab;
+        user-select: none;
+        position: relative;
+
+        // Hover effects only when not dragging
+        &:not(.dragging):hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        // Selected state removed - no more blue border
+
+        // Dragging state
+        &.dragging {
+            cursor: grabbing;
+            // Disable transitions during drag for smooth movement
+            transition: none !important;
+            will-change: transform;
+            z-index: 1000;
+
+            // Enhanced visual feedback for smooth dragging
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3), 0 0 20px rgba(59, 130, 246, 0.3);
+            transform: scale(1.02);
+
+            // Disable most interactions while dragging but keep connection points active
+            pointer-events: auto;
+
+            // Disable text selection and other interactions
+            user-select: none;
+
+            .connection-point {
+                pointer-events: auto !important;
+                z-index: 1001;
+            }
+        }
+
+        // Smooth movement state
+        &.smooth-moving {
+            transition: none !important;
+            will-change: transform;
+
+            // Add a subtle glow effect
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+
+            // Slight transparency for visual feedback
+            opacity: 0.9;
+        }
+
+        &:active {
+            cursor: grabbing;
+        }
+
+        // Delete button styles - now controlled by TypeScript
+        .delete-button {
+            border-radius: 0 0 0 100%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-end;
+            padding: 4px;
+            border: 1px solid rgba(156, 163, 175, 0.3);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+
+
+        .delete-button {
+            &:hover {
+                background-color: #ef4444 !important; // red-500
+                color: white !important;
+                transform: scale(1.1);
+                border-color: rgba(239, 68, 68, 0.5);
+                box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+            }
+        }
+
+        .connection-point {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+            backface-visibility: hidden;
+            border: 4px solid white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.1);
+            min-width: 24px;
+            min-height: 24px;
+
+            &:hover {
+                transform: scale(1.4);
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.2);
+            }
+
+            &:active {
+                transform: scale(1.2);
+            }
+
+            &.connected {
+                background-color: #10b981 !important; // green-500
+                border-color: #059669; // green-600
+                box-shadow: 0 6px 12px rgba(16, 185, 129, 0.5), 0 2px 4px rgba(16, 185, 129, 0.3);
+            }
+
+            &.connecting {
+                background-color: #f59e0b !important; // amber-500
+                border-color: #d97706; // amber-600
+                animation: pulse 1s infinite;
+            }
+
+            &.hover-valid {
+                background-color: #10b981 !important; // green-500
+                border-color: #059669; // green-600
+                transform: scale(1.6);
+                box-shadow: 0 0 20px rgba(16, 185, 129, 1), 0 4px 8px rgba(16, 185, 129, 0.6);
+            }
+        }
+    }
+
+    .connection-line {
+        transition: all 0.2s ease;
+        cursor: pointer;
+
+        &:hover {
+            stroke-width: 4 !important;
+            filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.8));
+            stroke: #2563eb !important;
+        }
+
+        &:active {
+            stroke-width: 5 !important;
+            filter: drop-shadow(0 0 8px rgba(59, 130, 246, 1));
+        }
+    }
+
+    // Smooth connection line updates during drag
+    .connection-line-updating {
+        transition: none !important;
+        will-change: d;
+    }
+}
+
+// Drag & Drop States
+.dragging {
+    opacity: 0.9;
+    transform: scale(1.02);
+    z-index: 1000;
+    transition: none !important;
+    will-change: transform;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.drag-over {
+    background: rgba(59, 130, 246, 0.05);
+    border: 2px dashed #3b82f6;
+}
+
+// Connection States
+.connecting {
+    .connection-point {
+        animation: pulse 1s infinite;
+        background: #10b981 !important;
+    }
+}
+
+// Pulse animation for connection points
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.8);
+    }
+    70% {
+        transform: scale(1.3);
+        box-shadow: 0 0 0 12px rgba(245, 158, 11, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    }
+}
+
+// Properties Panel
+.properties-panel {
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .status-indicator {
+        &.online {
+            color: #10b981;
+        }
+
+        &.offline {
+            color: #ef4444;
+        }
+
+        &.connected {
+            color: #3b82f6;
+        }
+
+        &.standby {
+            color: #f59e0b;
+        }
+    }
+}
+
+// Toolbar Styles
+.toolbar {
+    .toolbar-button {
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+            background: #f3f4f6;
+            transform: scale(1.05);
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+}
+
+// Performance optimizations
+.flow-node {
+    // Force hardware acceleration
+    transform: translateZ(0);
+
+    // Optimize rendering
+    contain: layout style paint;
+
+    // Smooth transforms
+    &.optimized-drag {
+        will-change: transform;
+        transition: none;
+    }
+}
+
+// Smooth zoom transitions
+.flow-canvas {
+    transition: transform 0.3s ease;
+    transform-origin: center center;
+}
+
+// Custom scrollbar for better UX
+.flow-builder-container ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.flow-builder-container ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.flow-builder-container ::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.flow-builder-container ::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+// Responsive design
+@media (max-width: 1024px) {
+    .flow-builder-container {
+        .properties-panel {
+            width: 250px;
+        }
+
+        .node-library {
+            width: 200px;
+        }
+    }
+}
+
+@media (max-width: 768px) {
+    .flow-builder-container {
+        .properties-panel,
+        .node-library {
+            display: none;
+        }
+    }
+}
+
+// Connection animation for active flows
+@keyframes connectionPulse {
+    0%, 100% {
+        stroke-opacity: 1;
+    }
+    50% {
+        stroke-opacity: 0.5;
+    }
+}
+
+.connection-active {
+    animation: connectionPulse 1s infinite;
+}
+
+// Connection hover effects and icons
+.connection-line {
+    cursor: pointer;
+    transition: stroke 0.2s ease;
+
+    &:hover {
+        stroke-width: 3;
+    }
+}
+
+.connection-icon {
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+        transform: scale(1.2);
+        stroke-width: 3;
+    }
+}
+
+.connection-icon-text {
+    pointer-events: none;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+}
